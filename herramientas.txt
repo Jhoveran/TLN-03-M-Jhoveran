@@ -1,6 +1,0 @@
-git
-gns3
-pnetlab
-eve-ng
-containerlab
-ubuntu linux
