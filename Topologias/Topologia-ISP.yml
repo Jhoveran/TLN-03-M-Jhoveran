@@ -16,24 +16,29 @@ topology:
     CPE2-HQ:
       kind: cisco_iol
       image: vrnetlab/cisco_iol:17.12.01
+      startup-config: configs/CPE2-HQ_cfg.partial      
 
     CORE1-HQ:
       kind: cisco_iol
       image: vrnetlab/cisco_iol:17.12.01
-      startup-config: configs/CPE_HQ_cfg.partial
+      startup-config: configs/CORE1-HQ_cfg.partial
 
     CORE2-HQ:
       kind: cisco_iol
-      image: vrnetlab/cisco_iol:17.12.01      
+      image: vrnetlab/cisco_iol:17.12.01   
+      startup-config: configs/CORE2-HQ_cfg.partial   
 
     AGG1-HQ:
       kind: cisco_iol
-      image: vrnetlab/cisco_iol:17.12.01
-      startup-config: configs/CPE_HQ_cfg.partial
+      image: vrnetlab/cisco_iol:l2-17.12.01
+      type: l2
+      startup-config: configs/AGG1-HQ_cfg.partial      
 
     AGG2-HQ:
       kind: cisco_iol
-      image: vrnetlab/cisco_iol:17.12.01        
+      image: vrnetlab/cisco_iol:l2-17.12.01        
+      type: l2
+      startup-config: configs/AGG2-HQ_cfg.partial      
 
     SW-PISO1:
       kind: cisco_iol
