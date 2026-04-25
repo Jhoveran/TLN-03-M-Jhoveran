@@ -43,6 +43,7 @@ router ospf 1
  network 172.16.0.0 0.0.0.3 area 0
  network 10.0.0.68 0.0.0.3 area 0
  network 200.0.0.1 0.0.0.0 area 0
+ redistribute static subnets
  default-information originate always
 !
 router bgp 400
