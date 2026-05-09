@@ -1,0 +1,68 @@
+track 5 ip route 192.168.5.0 255.255.255.0 reachability
+track 10 ip route 192.168.10.0 255.255.255.0 reachability
+track 15 ip route 192.168.15.0 255.255.255.0 reachability
+track 20 ip route 192.168.20.0 255.255.255.0 reachability
+!
+interface Loopback0
+ ip address 200.0.2.1 255.255.255.255
+!
+interface Ethernet0/1
+ ip address 10.0.0.74 255.255.255.252
+ ip nat outside
+ no shutdown
+!
+interface Ethernet0/2
+ no ip address
+ no shutdown
+!
+interface Ethernet0/2.25
+ encapsulation dot1q 25
+ ip address 192.168.25.2 255.255.255.0 
+ ip nat inside
+ vrrp 25 ip 192.168.25.1
+ vrrp 25 preempt
+ vrrp 25 track 5
+ vrrp 25 track 10
+ vrrp 25 track 15
+ vrrp 25 track 20
+ no shutdown
+!
+interface Ethernet0/2.30
+ encapsulation dot1q 30
+ ip address 192.168.30.2 255.255.255.0
+ ip nat inside
+ vrrp 30 ip 192.168.30.1
+ vrrp 30 preempt
+ vrrp 30 track 5
+ vrrp 30 track 10
+ vrrp 30 track 15
+ vrrp 30 track 20
+ no shutdown
+!
+interface Tunnel1
+ ip address 172.16.10.3 255.255.255.248
+ ip nhrp authentication DMVPN
+ ip nhrp map 172.16.10.1 200.0.0.1    
+ ip nhrp map multicast 200.0.0.1     
+ ip nhrp network-id 1
+ ip nhrp nhs 172.16.10.1
+ tunnel source 200.0.2.1
+ tunnel mode gre multipoint
+!
+router eigrp 10
+ router-id 5.5.5.5
+ passive-interface ethernet0/2.30
+ passive-interface ethernet0/2.25
+ network 172.16.10.0 0.0.0.7
+ network 192.168.25.0 0.0.0.255 
+ network 192.168.30.0 0.0.0.255
+ no auto-summary
+!
+ip route 0.0.0.0 0.0.0.0 10.0.0.73
+! 
+ip access-list standard 10
+ 10 permit 192.168.25.0 0.0.0.255
+ 20 permit 192.168.30.0 0.0.0.255
+!
+ip nat pool BRANCH2-POOL 200.0.2.2 200.0.2.6 prefix-length 29
+ip nat inside source list 10 pool BRANCH2-POOL overload

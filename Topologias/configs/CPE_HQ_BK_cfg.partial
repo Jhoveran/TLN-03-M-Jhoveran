@@ -26,6 +26,25 @@ interface Ethernet0/2.20
  vrrp 20 priority 95
  no shutdown
 !
+interface Tunnel2
+ ip address 172.16.20.1 255.255.255.248
+ ip nhrp authentication DMVPN
+ ip nhrp map multicast dynamic
+ ip nhrp network-id 2
+ tunnel source 190.0.1.1
+ tunnel mode gre multipoint
+ no ip split-horizon eigrp 10
+ no ip next-hop-self eigrp 10
+!
+router eigrp 10
+ router-id 3.3.3.3
+ passive-interface ethernet0/2.10
+ passive-interface ethernet0/2.20
+ network 172.16.20.0 0.0.0.7
+ network 192.168.10.0 0.0.0.255 
+ network 192.168.20.0 0.0.0.255
+ no auto-summary
+!
 ip http server
 ip http secure-server
 ip route 0.0.0.0 0.0.0.0 10.0.0.65

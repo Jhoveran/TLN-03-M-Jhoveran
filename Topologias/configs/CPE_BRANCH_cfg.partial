@@ -36,6 +36,27 @@ interface Ethernet0/3
  no ip address
  shutdown
 !
+interface Tunnel1
+ ip address 172.16.10.2 255.255.255.248
+ ip nhrp authentication DMVPN
+ ip nhrp map 172.16.10.1 200.0.0.1    
+ ip nhrp map multicast 200.0.0.1      
+ ip nhrp network-id 1
+ ip nhrp nhs 172.16.10.1
+ tunnel source 190.0.0.1
+ tunnel mode gre multipoint
+ no ip split-horizon eigrp 10
+ no ip next-hop-self eigrp 10
+!
+router eigrp 10
+ router-id 2.2.2.2
+ passive-interface ethernet0/2.5
+ passive-interface ethernet0/2.15
+ network 172.16.10.0 0.0.0.7
+ network 192.168.5.0 0.0.0.255 
+ network 192.168.15.0 0.0.0.255
+ no auto-summary
+!
 ip access-list standard 10
  10 permit 192.168.5.0 0.0.0.255
  20 permit 192.168.15.0 0.0.0.255
