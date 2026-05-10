@@ -1,11 +1,24 @@
 # UNIVERSIDAD NACIONAL DE INGENIERIA 
 # CURSO - TLN03 - AUTOMATIZACIÓN Y PROGRAMABILIDAD DE REDES
 
- Descripción
+## Descripción
 Repositorio base para el curso Electivo TLN03 de la Universidad Nacional de Ingenieria.
 
-## Topología
+## Topología Base
 ![Topologia](docs/Topologia%20Base-2.png)
+
+## Topología ISP - Branch2
+Esta rama (`pc2-jhoveran-test`) extiende la topología base agregando la red Branch2, 
+interconectada a través de ISP-Movistar e ISP-Claro.
+
+![Topologia ISP Branch2](docs/topologia.png)
+
+## Tuneles DMVPN
+![Direccionamiento Branch2](docs/tuneles.png)
+
+## Direccionamiento Branch2
+![Direccionamiento Branch2](docs/branch2.png)
+
 ## Tecnologías
 - Linux
 - Docker
@@ -15,5 +28,4 @@ Repositorio base para el curso Electivo TLN03 de la Universidad Nacional de Inge
 - Ansible
 
 ## Configuraciones Base
-```markdown
 Por desarrollar
