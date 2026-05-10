@@ -11,7 +11,7 @@ Repositorio base para el curso Electivo TLN03 de la Universidad Nacional de Inge
 Esta rama (`pc2-jhoveran-test`) extiende la topología base agregando la red Branch2, 
 interconectada a través de ISP-Movistar e ISP-Claro.
 
-![Topologia ISP Branch2](docs/topologia.png)
+![Topologia nueva](docs/topologia.png)
 
 ## Tuneles DMVPN
 ![Direccionamiento Branch2](docs/tuneles.png)
