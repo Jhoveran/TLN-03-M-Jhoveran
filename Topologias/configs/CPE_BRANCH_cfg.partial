@@ -45,8 +45,6 @@ interface Tunnel1
  ip nhrp nhs 172.16.10.1
  tunnel source 190.0.0.1
  tunnel mode gre multipoint
- no ip split-horizon eigrp 10
- no ip next-hop-self eigrp 10
 !
 router eigrp 10
  router-id 2.2.2.2

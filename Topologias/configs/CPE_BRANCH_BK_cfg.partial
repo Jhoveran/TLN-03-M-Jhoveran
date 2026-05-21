@@ -31,7 +31,7 @@ interface Tunnel2
  ip nhrp authentication DMVPN
  ip nhrp map 172.16.20.1 190.0.1.1    
  ip nhrp map multicast 190.0.1.1      
- ip nhrp network-id 1
+ ip nhrp network-id 2
  ip nhrp nhs 172.16.20.1
  tunnel source 200.0.1.1
  tunnel mode gre multipoint
