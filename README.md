@@ -23,6 +23,7 @@ grupo3/
 ├── ansible.cfg              # Configuración de Ansible (interpreter, host key checking, etc.)
 ├── inventory.ini            # Inventario de dispositivos y grupos
 ├── generar_inventario.py    # Script Python - genera inventario CSV/TXT vía Ansible
+├── ScriptParte5.py          # Script Python adicional - auditoría de configuraciones (netmiko)
 │
 ├── host_vars/                  # Variables específicas por dispositivo
 │   ├── clab-MPLS-CPE-1.yml
@@ -40,11 +41,27 @@ grupo3/
 │   ├── interfaces.yml          # Configuración de interfaces
 │   ├── ospf.yml                # Configuración IGP (OSPF)
 │   ├── mpls.yml                # Configuración MPLS
+│   ├── bgp.yml                 # Configuración MP-BGP
+│   ├── vpn.yml                 # Configuración VPNv4 / VPNv6
 │   ├── validate.yml            # Validación del estado de la red
 │   └── gather_facts.yml        # Recolección de inventario (cisco.ios.ios_facts)
 │
-└── reportes/                # Salida de generar_inventario.py (CSV/TXT)
+├── reportes/                # Salida de generar_inventario.py y ScriptParte5.py (CSV/TXT/JSON)
+│
+└── grupo3_napalm/           # Validación del estado de la red con NAPALM
+    ├── inventario.py            # Inventario de dispositivos + helpers de conexión NAPALM
+    ├── audit_facts.py           # get_facts() - información general del dispositivo
+    ├── audit_interfaces.py      # get_interfaces() - estado de interfaces
+    ├── audit_interfaces_ip.py   # get_interfaces_ip() - direccionamiento IP
+    ├── audit_routes.py          # get_route_to() - tabla de rutas
+    ├── audit_bgp.py             # get_bgp_neighbors() - vecinos BGP
+    ├── audit_environment.py     # get_environment() - estado de hardware
+    ├── check_ospf_status.py     # Validación de vecindades OSPF
+    ├── check_bgp_status.py      # Validación de sesiones BGP
+    ├── check_ipv4_vpn.py        # Validación de conectividad VPNv4 extremo a extremo
+    └── check_ipv6_vpn.py        # Validación de conectividad VPNv6 extremo a extremo
 ```
+
 
 ## Requisitos previos
 
@@ -52,9 +69,65 @@ grupo3/
 - Python 3.10+
 - Ansible:
   ```bash
-  pip install ansible
-  ansible-galaxy collection install cisco.ios
+  pip install ansible-core
+  ansible-galaxy collection install cisco.ios ansible.netcommon
   ```
+- Para el auditor de configuraciones (`ScriptParte5.py`):
+  ```bash
+  pip3 install --user --upgrade netmiko
+  ```
+- Para la validación con NAPALM (`grupo3_napalm/`), se recomienda un entorno virtual dedicado:
+  ```bash
+  python3 -m venv venv
+  source venv/bin/activate
+  pip install napalm netmiko junos-eznc pyparsing==2.4.7 tabulate
+  ```
+
+## Inventario Ansible
+
+El inventario (`inventory.ini`) organiza los dispositivos por rol funcional, con subgrupos reutilizables para los playbooks:
+
+```ini
+[MPLS_routers]
+clab-MPLS-PE1
+clab-MPLS-PE2
+clab-MPLS-P1
+clab-MPLS-P2
+clab-MPLS-RR1
+clab-MPLS-RR2
+
+[CPEs]
+clab-MPLS-CPE-1
+clab-MPLS-CPE-2
+
+[Switches]
+clab-MPLS-SW-1
+clab-MPLS-SW-2
+
+[PE_routers]
+clab-MPLS-PE1
+clab-MPLS-PE2
+
+[P_routers]
+clab-MPLS-P1
+clab-MPLS-P2
+
+[RR_routers]
+clab-MPLS-RR1
+clab-MPLS-RR2
+
+[MPLS_core:children]
+PE_routers
+P_routers
+RR_routers
+
+[all:vars]
+ansible_user=admin
+ansible_password=admin
+ansible_network_os=cisco.ios.ios
+ansible_connection=ansible.netcommon.network_cli
+ansible_paramiko_look_for_keys=False
+```
 
 El grupo `MPLS_core` agrupa PE, P y RR para poder apuntar playbooks de core (MPLS, OSPF) a todos ellos en un solo `hosts:`.
 
@@ -67,6 +140,8 @@ Los playbooks viven en `playbooks/` y se ejecutan con `ansible-playbook -i inven
 | `interfaces.yml` | Configuración de interfaces de los dispositivos |
 | `ospf.yml` | Configuración del IGP (OSPF) |
 | `mpls.yml` | Configuración MPLS (label switching) |
+| `bgp.yml` | Configuración MP-BGP |
+| `vpn.yml` | Configuración de VPNv4 y VPNv6 |
 | `validate.yml` | Validación del estado operativo posterior a la configuración |
 | `gather_facts.yml` | Recolecta hardware/software de cada dispositivo con `cisco.ios.ios_facts` (usado por `generar_inventario.py`) |
 
@@ -76,50 +151,90 @@ Ejemplo de ejecución:
 ansible-playbook -i inventory.ini playbooks/interfaces.yml
 ansible-playbook -i inventory.ini playbooks/ospf.yml
 ansible-playbook -i inventory.ini playbooks/mpls.yml
+ansible-playbook -i inventory.ini playbooks/bgp.yml
+ansible-playbook -i inventory.ini playbooks/vpn.yml
 ansible-playbook -i inventory.ini playbooks/validate.yml
 ```
 
-> Los playbooks de BGP y VPNv4/VPNv6, así como la validación con NAPALM, están planificados para una siguiente iteración del proyecto.
-
 ## Script Python adicional
 
-**`generar_inventario.py`** — Genera automáticamente un inventario de hardware/software de todos los dispositivos de la red, ejecutando `playbooks/gather_facts.yml` (que usa `cisco.ios.ios_facts`) y exportando el resultado a **CSV** o **TXT**.
+**`ScriptParte5.py`** — Auditor de configuraciones: se conecta vía SSH (con **netmiko**) a cada dispositivo de la red, descarga su `show running-config`, y busca patrones específicos (interfaces loopback, procesos OSPF/BGP, VRFs, address-family VPNv4/VPNv6, route distinguishers, route targets, etc.) usando expresiones regulares. A partir de esos patrones infiere el rol de cada dispositivo (PE, P, RR) y genera reportes en **TXT**, **CSV** y **JSON**.
 
 ### Uso
 
 ```bash
-# Inventario completo en CSV (reportes/inventario_<timestamp>.csv)
-python3 generar_inventario.py
-
-# En formato TXT
-python3 generar_inventario.py --formato txt
-
-# Ambos formatos a la vez
-python3 generar_inventario.py --formato ambos
-
-# Limitar a un grupo específico (ej: solo los PE)
-python3 generar_inventario.py --grupo PE_routers
-
-# Ruta de salida personalizada
-python3 generar_inventario.py --salida reportes/inventario_pre_cambio.csv
-
-# Ver el detalle de la ejecución de Ansible (debug)
-python3 generar_inventario.py -v
+python3 ScriptParte5.py
 ```
 
-### Datos que recolecta
+No requiere argumentos: recorre todos los dispositivos definidos en la lista `DEVICES` dentro del propio script (espejo del `inventory.ini` de Ansible) y genera los tres reportes en `reportes/` con timestamp:
 
-| Campo | Descripción |
-|---|---|
-| `hostname` | Hostname configurado en el dispositivo |
-| `grupos` | Grupos de Ansible a los que pertenece |
-| `host_conexion` | Nombre usado en el inventario para conectarse |
-| `modelo` | Imagen/plataforma del dispositivo (`ansible_net_image`) |
-| `tipo_ios` | Tipo de IOS (`ansible_net_iostype`) |
-| `version_ios` | Versión de IOS |
-| `serial` | Número de serie |
-| `uptime` | Tiempo de actividad |
-| `memoria_total_mb` / `memoria_libre_mb` | Memoria del dispositivo |
-| `estado` | `OK` si se pudo conectar y recolectar datos, `INALCANZABLE` si no |
+```
+reportes/auditoria_<timestamp>.txt
+reportes/auditoria_<timestamp>.csv
+reportes/auditoria_<timestamp>.json
+```
 
-Si un dispositivo no responde, el playbook lo registra igualmente con estado `INALCANZABLE` en vez de detener la ejecución completa (manejo de errores con `block/rescue`).
+### Qué reporta
+
+- **Rol inferido** del dispositivo (PE, P, RR) según su configuración.
+- Cantidad de interfaces totales y loopbacks.
+- VRFs configurados (con listado de ejemplos).
+- Si MPLS y LDP están habilitados.
+- Proceso y redes OSPF.
+- Proceso BGP y vecinos (con listado de ejemplos).
+- Address-family VPNv4 / VPNv6.
+- Route distinguishers y route targets.
+- Resumen global: dispositivos auditados, exitosos, con error, totales agregados de VRFs y vecinos BGP en toda la red.
+
+Si un dispositivo no responde (timeout o fallo de autenticación), se registra el error y la auditoría continúa con el resto.
+
+## Validación con NAPALM
+
+La carpeta `grupo3_napalm/` contiene los scripts de validación del estado operativo de la red usando **NAPALM**, organizados en dos grupos:
+
+- **`audit_*.py`** — uno por cada método NAPALM requerido, recorren todos los dispositivos del inventario y muestran los resultados en tablas (`tabulate`):
+  - `audit_facts.py` → `get_facts()`
+  - `audit_interfaces.py` → `get_interfaces()`
+  - `audit_interfaces_ip.py` → `get_interfaces_ip()`
+  - `audit_routes.py` → `get_route_to()`
+  - `audit_bgp.py` → `get_bgp_neighbors()`
+  - `audit_environment.py` → `get_environment()`
+
+- **`check_*.py`** — validaciones puntuales del estado de los servicios:
+  - `check_ospf_status.py` → vecindades OSPF en estado FULL
+  - `check_bgp_status.py` → sesiones BGP establecidas
+  - `check_ipv4_vpn.py` → conectividad VPNv4 extremo a extremo
+  - `check_ipv6_vpn.py` → conectividad VPNv6 extremo a extremo
+
+Todos comparten `inventario.py`, que centraliza la lista de dispositivos y los helpers de conexión NAPALM (sesión por dispositivo y espera de disponibilidad SSH antes de conectar).
+
+### Uso
+
+```bash
+cd grupo3_napalm
+source ../venv/bin/activate   # si se uso un entorno virtual dedicado
+
+python3 audit_facts.py
+python3 audit_interfaces.py
+python3 audit_interfaces_ip.py
+python3 audit_routes.py
+python3 audit_bgp.py
+python3 audit_environment.py
+
+python3 check_ospf_status.py
+python3 check_bgp_status.py
+python3 check_ipv4_vpn.py
+python3 check_ipv6_vpn.py
+```
+
+### Ejemplo: `audit_routes.py`
+
+Verifica `get_route_to()` contra un conjunto de destinos definidos por rol (`DESTINATIONS`), y valida que el protocolo de cada ruta encontrada sea el esperado para ese tipo de nodo (`PROTO_ESPERADO`) — por ejemplo, un P solo debería tener rutas OSPF, mientras que un PE puede tener OSPF y BGP. Cada ruta se marca como `OK` o se señala si el protocolo no es el esperado, y el resultado se imprime en una tabla con `tabulate`.
+
+## Utilidad complementaria: `generar_inventario.py`
+
+Genera un inventario de hardware/software de la red ejecutando `playbooks/gather_facts.yml` (vía `cisco.ios.ios_facts`) y exportando el resultado a CSV o TXT:
+
+```bash
+python3 generar_inventario.py --formato csv
+```
