@@ -83,54 +83,6 @@ grupo3/
   pip install napalm netmiko junos-eznc pyparsing==2.4.7 tabulate
   ```
 
-## Inventario Ansible
-
-El inventario (`inventory.ini`) organiza los dispositivos por rol funcional, con subgrupos reutilizables para los playbooks:
-
-```ini
-[MPLS_routers]
-clab-MPLS-PE1
-clab-MPLS-PE2
-clab-MPLS-P1
-clab-MPLS-P2
-clab-MPLS-RR1
-clab-MPLS-RR2
-
-[CPEs]
-clab-MPLS-CPE-1
-clab-MPLS-CPE-2
-
-[Switches]
-clab-MPLS-SW-1
-clab-MPLS-SW-2
-
-[PE_routers]
-clab-MPLS-PE1
-clab-MPLS-PE2
-
-[P_routers]
-clab-MPLS-P1
-clab-MPLS-P2
-
-[RR_routers]
-clab-MPLS-RR1
-clab-MPLS-RR2
-
-[MPLS_core:children]
-PE_routers
-P_routers
-RR_routers
-
-[all:vars]
-ansible_user=admin
-ansible_password=admin
-ansible_network_os=cisco.ios.ios
-ansible_connection=ansible.netcommon.network_cli
-ansible_paramiko_look_for_keys=False
-```
-
-El grupo `MPLS_core` agrupa PE, P y RR para poder apuntar playbooks de core (MPLS, OSPF) a todos ellos en un solo `hosts:`.
-
 ## Automatización con Ansible
 
 Los playbooks viven en `playbooks/` y se ejecutan con `ansible-playbook -i inventory.ini playbooks/<playbook>.yml`.
@@ -149,11 +101,6 @@ Ejemplo de ejecución:
 
 ```bash
 ansible-playbook -i inventory.ini playbooks/interfaces.yml
-ansible-playbook -i inventory.ini playbooks/ospf.yml
-ansible-playbook -i inventory.ini playbooks/mpls.yml
-ansible-playbook -i inventory.ini playbooks/bgp.yml
-ansible-playbook -i inventory.ini playbooks/vpn.yml
-ansible-playbook -i inventory.ini playbooks/validate.yml
 ```
 
 ## Script Python adicional
@@ -215,16 +162,6 @@ cd grupo3_napalm
 source ../venv/bin/activate   # si se uso un entorno virtual dedicado
 
 python3 audit_facts.py
-python3 audit_interfaces.py
-python3 audit_interfaces_ip.py
-python3 audit_routes.py
-python3 audit_bgp.py
-python3 audit_environment.py
-
-python3 check_ospf_status.py
-python3 check_bgp_status.py
-python3 check_ipv4_vpn.py
-python3 check_ipv6_vpn.py
 ```
 
 ### Ejemplo: `audit_routes.py`
